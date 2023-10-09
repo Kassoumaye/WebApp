@@ -1,0 +1,78 @@
+#!/bin/sh
+#################################################################
+# ajoute un utilisateur virtuel pour vsftpd  // BY ChesterKiK
+#################################################################
+#!/bin/bash
+#
+# Creation d'une base de donees MySQL + utilisateur
+#
+# @author : V. Liefooghe
+# @version : 1.0.0
+# 
+# v 1.0.0 : 14/02/2012
+#
+#---------------------------------------------------------
+
+echo -n "Nom de la base : "
+read DBNAME
+
+if [ "$DBNAME" != "" ] ; then
+  echo "Creation de la base $DBNAME"
+
+  echo -n "Nom de l'utilisateur [$DBNAME]: "
+  read DBUSER
+  if [ "$DBUSER"  = "" ] ; then
+	DBUSER=$DBNAME
+  fi
+  echo "Utilisateur : $DBUSER"
+  echo -n "Mot de passe [$DBNAME.pwd%]: "
+  read DBPASS
+  if [ "$DBPASS"  = "" ] ; then
+	DBPASS="$DBNAME.pwd%"
+  fi
+  echo "Mot de passe :  $DBPASS"
+  echo "-----------------------------"
+  echo "Creation de la base : $DBNAME"
+  echo "Creation de l'utilisateur : $DBUSER"
+  echo "avec le mot de passe : $DBPASS"
+  echo -n "Confirmez-vous cette action ? [o/N] "
+  read CONFIRM
+  if [ "$CONFIRM" = "o" -o "$CONFIRM" = "O" ] ; then
+    echo "create database $DBNAME ;" >> /home/g2r/Documents/$$.tmp.sql
+    echo "create user '$DBUSER'@'' identified by '$DBPASS';" >> /home/g2r/Documents/$$.tmp.sql
+    echo "grant all on $DBNAME.* to '$DBUSER'@'';" >> /home/g2r/Documents/$$.tmp.sql
+    echo "flush privileges;" >> /home/g2r/Documents/$$.tmp.sql
+    echo "exit " >> /home/g2r/Documents/$$.tmp.sql
+    echo " "
+    echo "Connexion MySQL ..."
+    echo " "
+    mysql -u root -p < /home/g2r/Documents/$$.tmp.sql
+    #if [ $?:="0" ] ; then
+      #echo "Probleme de connexion MySQL"
+    #fi 
+    rm /home/g2r/Documents/$$.tmp.sql
+  fi 
+fi
+
+if [ "$DBUSER" != '' -a "$DBPASS" != '' ] ; then
+	# ajoute username et mot de passe au fichier texte des logins
+	echo $DBUSER"\n"$DBPASS >> /root/vsftpd_login.txt
+	# converti le fichier texte en DB
+	db_load -T -t hash -f /root/vsftpd_login.txt /etc/vsftpd_login.db
+	rm /root/vsftpd_login.txt
+	# securise le fichier
+	chmod 600 /etc/vsftpd_login.db
+	# cree le dossier utilisateur
+	mkdir /var/www/html/ftpzone/$DBUSER
+	mkdir /var/www/html/ftpzone/$DBUSER/upload
+	# defini les droits et le propriétaire des dossiers utilisateur
+	chmod 555 /var/www/html/ftpzone/$DBUSER
+	chmod 775 /var/www/html/ftpzone/$DBUSER/upload
+	chown -R vsftpd:vsftpd /var/www/html/ftpzone/$DBUSER
+	# affiche le succés
+	echo "Utilisateur FTP "$DBUSER" ajouté avec succès"
+#else
+#	echo "Deux arguments attendus (ex: addFTPuser username password)"
+fi
+
+
